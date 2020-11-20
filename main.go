@@ -7,6 +7,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/gliderlabs/ssh"
@@ -36,15 +37,15 @@ func (pty *ptyTerminal) execKubePty(
 	containerName string,
 	command string,
 ) error {
-	exec, err := pty.kubeRemoteExecutor()
+	exec, err := pty.kubeRemoteExecutor(namespace, podName, containerName, command)
 	if err != nil {
 		return err
 	}
 
 	err = exec.Stream(remotecommand.StreamOptions{
-		Stdin:  pty.Session,
-		Stdout: pty.Session,
-		Stderr: pty.Session,
+		Stdin:  pty.session,
+		Stdout: pty.session,
+		Stderr: pty.session,
 	})
 	if err != nil {
 		return err
@@ -53,7 +54,7 @@ func (pty *ptyTerminal) execKubePty(
 	return nil
 }
 
-func (pty *ptyTerminal) kubeRemoteExecutor() (remotecommand.Executor, error) {
+func (pty *ptyTerminal) kubeRemoteExecutor(namespace, podName, containerName, command string) (remotecommand.Executor, error) {
 	option := &v1.PodExecOptions{
 		Container: containerName,
 		Command:   []string{command},
@@ -71,7 +72,7 @@ func (pty *ptyTerminal) kubeRemoteExecutor() (remotecommand.Executor, error) {
 		Name(podName).
 		Namespace(namespace).
 		SubResource("exec").
-		Param("container", container).
+		Param("container", containerName).
 		VersionedParams(option, scheme.ParameterCodec)
 
 	return remotecommand.NewSPDYExecutor(pty.kubeRestClientConfig, "POST", req.URL())
