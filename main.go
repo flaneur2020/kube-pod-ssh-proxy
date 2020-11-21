@@ -45,12 +45,12 @@ func (pty *podPTY) Exec(
 	containerName string,
 	command string,
 ) error {
-	exec, err := pty.kubeRemoteExecutor(namespace, podName, containerName, command)
+	executor, err := pty.kubeRemoteExecutor(namespace, podName, containerName, command)
 	if err != nil {
 		return err
 	}
 
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = executor.Stream(remotecommand.StreamOptions{
 		Stdin:  pty.session,
 		Stdout: pty.session,
 		Stderr: pty.session,
