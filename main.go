@@ -116,7 +116,7 @@ func main() {
 
 		pty := newPodPty(session, kubeClient, kubeClientConfig)
 
-		err := pty.Exec(namespace, podName, containerName, "/bin/bash")
+		err := pty.Exec(namespace, podName, containerName, "/bin/sh")
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
