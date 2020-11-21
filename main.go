@@ -26,7 +26,7 @@ type podPTY struct {
 	containerName string
 }
 
-func newPodPty(
+func newPodPTY(
 	session ssh.Session,
 	kubeClient *kubernetes.Clientset,
 	kubeClientConfig *restclient.Config,
@@ -118,7 +118,7 @@ func main() {
 
 		err := pty.Exec(namespace, podName, containerName, "/bin/sh")
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Printf(err.Error())
 		}
 	})
 
