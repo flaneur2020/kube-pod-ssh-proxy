@@ -117,7 +117,8 @@ func main() {
 
 		err := pty.Exec(namespace, podName, containerName, "/bin/sh")
 		if err != nil {
-			log.Printf(err.Error())
+			io.WriteString(session, err.Error()+"\n")
+			log.Printf("session.closed: %s", err.Error())
 		}
 	})
 
