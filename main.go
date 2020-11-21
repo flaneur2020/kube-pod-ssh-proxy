@@ -88,13 +88,13 @@ func (pty *podPTY) kubeRemoteExecutor(namespace, podName, containerName, command
 
 func main() {
 	var (
-		kubeConf      string
+		confPath      string
 		namespace     string
 		podName       string
 		containerName string
 	)
 
-	flag.StringVar(&kubeConf, "conf", "", "k8s config")
+	flag.StringVar(&confPath, "conf", "", "k8s config")
 	flag.StringVar(&namespace, "namespace", "default", "the namespace which we are serving")
 	flag.StringVar(&podName, "pod", "", "the pod name")
 	flag.StringVar(&containerName, "container", "", "the container name")
@@ -103,12 +103,12 @@ func main() {
 
 	kubeClientConfig, err := clientcmd.BuildConfigFromFlags("", confPath)
 	if err != nil {
-		log.Fatalf(err)
+		log.Fatalf(err.Error())
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(kubeClientConfig)
 	if err != nil {
-		log.Fatalf(err)
+		log.Fatalf(err.Error())
 	}
 
 	ssh.Handle(func(session ssh.Session) {
@@ -118,7 +118,7 @@ func main() {
 
 		err := pty.Exec(namespace, podName, containerName, "/bin/bash")
 		if err != nil {
-			log.Fatalf(err)
+			log.Fatalf(err.Error())
 		}
 	})
 
