@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"io"
 	"log"
 
@@ -8,15 +9,16 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/gliderlabs/ssh"
 )
 
-type ptyTerminal struct {
-	session              ssh.Session
-	kubeClient           *kubernetes.Clientset
-	kubeRestClientConfig *restclient.Config
+type podPTY struct {
+	session          ssh.Session
+	kubeClient       *kubernetes.Clientset
+	kubeClientConfig *restclient.Config
 
 	user          string
 	namespace     string
@@ -24,14 +26,20 @@ type ptyTerminal struct {
 	containerName string
 }
 
-func newPtyTerminal(session ssh.Session) *ptyTerminal {
-	return &ptyTerminal{
-		session: session,
-		user:    session.User(),
+func newPodPty(
+	session ssh.Session,
+	kubeClient *kubernetes.Clientset,
+	kubeClientConfig *restclient.Config,
+) *podPTY {
+	return &podPTY{
+		session:          session,
+		user:             session.User(),
+		kubeClient:       kubeClient,
+		kubeClientConfig: kubeClientConfig,
 	}
 }
 
-func (pty *ptyTerminal) execKubePty(
+func (pty *podPTY) Exec(
 	namespace string,
 	podName string,
 	containerName string,
@@ -54,7 +62,7 @@ func (pty *ptyTerminal) execKubePty(
 	return nil
 }
 
-func (pty *ptyTerminal) kubeRemoteExecutor(namespace, podName, containerName, command string) (remotecommand.Executor, error) {
+func (pty *podPTY) kubeRemoteExecutor(namespace, podName, containerName, command string) (remotecommand.Executor, error) {
 	option := &v1.PodExecOptions{
 		Container: containerName,
 		Command:   []string{command},
@@ -75,13 +83,45 @@ func (pty *ptyTerminal) kubeRemoteExecutor(namespace, podName, containerName, co
 		Param("container", containerName).
 		VersionedParams(option, scheme.ParameterCodec)
 
-	return remotecommand.NewSPDYExecutor(pty.kubeRestClientConfig, "POST", req.URL())
+	return remotecommand.NewSPDYExecutor(pty.kubeClientConfig, "POST", req.URL())
 }
 
 func main() {
-	ssh.Handle(func(s ssh.Session) {
-		io.WriteString(s, "Hello world\n")
+	var (
+		kubeConf      string
+		namespace     string
+		podName       string
+		containerName string
+	)
+
+	flag.StringVar(&kubeConf, "conf", "", "k8s config")
+	flag.StringVar(&namespace, "namespace", "default", "the namespace which we are serving")
+	flag.StringVar(&podName, "pod", "", "the pod name")
+	flag.StringVar(&containerName, "container", "", "the container name")
+
+	flag.Parse()
+
+	kubeClientConfig, err := clientcmd.BuildConfigFromFlags("", confPath)
+	if err != nil {
+		log.Fatalf(err)
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(kubeClientConfig)
+	if err != nil {
+		log.Fatalf(err)
+	}
+
+	ssh.Handle(func(session ssh.Session) {
+		io.WriteString(session, "Welcome!\n")
+
+		pty := newPodPty(session, kubeClient, kubeClientConfig)
+
+		err := pty.Exec(namespace, podName, containerName, "/bin/bash")
+		if err != nil {
+			log.Fatalf(err)
+		}
 	})
 
+	log.Printf("listening :2222")
 	log.Fatal(ssh.ListenAndServe(":2222", nil))
 }
