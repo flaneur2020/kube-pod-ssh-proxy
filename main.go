@@ -90,13 +90,11 @@ func main() {
 	var (
 		confPath      string
 		namespace     string
-		podName       string
 		containerName string
 	)
 
 	flag.StringVar(&confPath, "conf", "", "k8s config")
 	flag.StringVar(&namespace, "namespace", "default", "the namespace which we are serving")
-	flag.StringVar(&podName, "pod", "", "the pod name")
 	flag.StringVar(&containerName, "container", "", "the container name")
 
 	flag.Parse()
@@ -114,7 +112,8 @@ func main() {
 	ssh.Handle(func(session ssh.Session) {
 		io.WriteString(session, "Welcome!\n")
 
-		pty := newPodPty(session, kubeClient, kubeClientConfig)
+		podName := session.User()
+		pty := newPodPTY(session, kubeClient, kubeClientConfig)
 
 		err := pty.Exec(namespace, podName, containerName, "/bin/sh")
 		if err != nil {
