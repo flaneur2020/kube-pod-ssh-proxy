@@ -1,4 +1,4 @@
-module github.com/flanure2020/hellossh
+module github.com/flanure2020/kube-pod-ssh-proxy
 
 go 1.14
 
